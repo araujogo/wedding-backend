@@ -3,6 +3,7 @@ package rsvp
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
+import io.ktor.features.CORS
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.DefaultHeaders
@@ -14,6 +15,9 @@ import io.ktor.routing.get
 fun Application.main(){
     install(DefaultHeaders)
     install(CallLogging)
+    install(CORS){
+        host("localhost")
+    }
     install(ContentNegotiation){
         gson {
             setPrettyPrinting()
@@ -38,7 +42,7 @@ fun Routing.root(){
 }
 
 fun Routing.confirm(){
-    //TODO fazer confirmacao
+
 }
 
 data class Pessoa(val nome: String, val idade:Int)
