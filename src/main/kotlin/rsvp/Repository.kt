@@ -1,47 +1,24 @@
 package rsvp
 
 import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
-import org.jetbrains.exposed.dao.UUIDTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
-fun HikariConfig.ds() : HikariDataSource {
-    jdbcUrl = "jdbc:mysql://localhost/wedding"
-    username = "root"
-    password = "admin"
-    driverClassName = "com.mysql.jdbc.Driver"
-
-    return HikariDataSource(this)
-}
-
-operator fun Op<Boolean>.plus(element: Op<Boolean>): Op<Boolean> {
-    return this and element
-}
-
-fun salvaPessoa(nomeI : String) : UUID{
+fun buscaConvidado(nomeSobrenome: String): List<String>{
     Database.connect(HikariConfig().ds())
-
-    var idSalvo: UUID? = null
-
-
-
-    return idSalvo as UUID
-}
-
-fun buscaConvidado(nomeSobrenome: List<String>){
-    Database.connect(HikariConfig().ds())
+    val acompanhantes = mutableListOf<String>()
 
     transaction {
-        (Acompanhante innerJoin Convidado).slice(Convidado.nome, Acompanhante.nome).
+        (Acompanhante innerJoin Convidado).slice(Acompanhante.nome).
                 select{
-                    whereNomesLike(nomeSobrenome)
+                    whereNomesLike(nomeSobrenome.separa())
                 }.forEach{
-            println("${it[Acompanhante.nome]} corresponde à: ${it[Convidado.nome]}")
+            acompanhantes.add(it[Acompanhante.nome])
         }
     }
+    return acompanhantes
 }
 
 fun whereNomesLike(palavras: List<String>): Op<Boolean>{
@@ -63,23 +40,7 @@ fun whereNomesLike(palavras: List<String>): Op<Boolean>{
     throw RuntimeException("Nao eh possivel fazer busca sem palavras")
 }
 
-object Convidado: Table(){
-    val id = uuid("id").primaryKey()
-    val nome = varchar("nome", 150)
-    val telefone = varchar("telefone", 14)
-    val confirmou = bool("confirmou")
-}
-
-object Acompanhante: UUIDTable("acompanhante"){
-    val nome = varchar("nome", 150)
-    val confirmou = bool("confirmou")
-    val idConvidado = (uuid("id_convidado").references(Convidado.id, ReferenceOption.CASCADE))
-}
 
 fun main(args: Array<String>) {
-//    buscaConvidado("Vinicius")
-
-
-    buscaConvidado("Vinicius de Souza Araujo".trim().replace("\\s+".toRegex(), " ").split(" "))
-
+    buscaConvidado("Vinicius Araujo")
 }
