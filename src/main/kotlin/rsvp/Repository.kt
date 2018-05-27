@@ -60,7 +60,7 @@ fun whereNomesLike(palavras: List<String>): Op<Boolean>{
         }
         return opNome and opSobrenomes
     }
-    throw ClassNotFoundException()
+    throw RuntimeException("Nao eh possivel fazer busca sem palavras")
 }
 
 object Convidado: Table(){
