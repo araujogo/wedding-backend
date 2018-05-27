@@ -8,7 +8,7 @@ import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.DefaultHeaders
 import io.ktor.gson.gson
-import io.ktor.response.respond
+import io.ktor.response.respondText
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 
@@ -33,11 +33,11 @@ fun Routing.root(){
     get("/"){
         val params = call.parameters
 
-        val pessoa = Pessoa(params["nome"] ?: "sem nome", params["idade"]?.toInt() ?: 0)
+        val pessoa = Pessoa(params["nome"] ?: throw RuntimeException(), params["idade"]?.toInt() ?: 0)
 
         //call.respondText { "Hello, o nome do felizardo eh ${pessoa.nome} e ele tem ${if (pessoa.idade == 0) "Sem idade" else pessoa.idade}" }
 
-        call.respond(pessoa)
+        call.respondText { "A pessoa foi salva com sucesso, o id desta pessoa é: ${salvaPessoa(pessoa.nome)}" }
     }
 }
 

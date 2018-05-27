@@ -1,33 +1,85 @@
 package rsvp
 
-import org.jetbrains.exposed.dao.EntityID
-import org.jetbrains.exposed.dao.IntEntity
-import org.jetbrains.exposed.dao.IntEntityClass
-import org.jetbrains.exposed.dao.IntIdTable
-import org.jetbrains.exposed.sql.Database
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
+import org.jetbrains.exposed.dao.UUIDTable
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.*
 
-fun testaBanco(){
-    Database.connect("jdbc:mysql://localhost/folhaweb2", driver = "com.mysql.jdbc.Driver", user = "root", password = "admin")
+fun HikariConfig.ds() : HikariDataSource {
+    jdbcUrl = "jdbc:mysql://localhost/wedding"
+    username = "root"
+    password = "admin"
+    driverClassName = "com.mysql.jdbc.Driver"
+
+    return HikariDataSource(this)
+}
+
+operator fun Op<Boolean>.plus(element: Op<Boolean>): Op<Boolean> {
+    return this and element
+}
+
+fun salvaPessoa(nomeI : String) : UUID{
+    Database.connect(HikariConfig().ds())
+
+    var idSalvo: UUID? = null
+
+
+
+    return idSalvo as UUID
+}
+
+fun buscaConvidado(nomeSobrenome: List<String>){
+    Database.connect(HikariConfig().ds())
 
     transaction {
-        val empresa = EmpresaObj.get(1)
-
-        println("Empresa ${empresa.nome}")
+        (Acompanhante innerJoin Convidado).slice(Convidado.nome, Acompanhante.nome).
+                select{
+                    whereNomesLike(nomeSobrenome)
+                }.forEach{
+            println("${it[Acompanhante.nome]} corresponde à: ${it[Convidado.nome]}")
+        }
     }
 }
 
-object Empresa: IntIdTable(){
-    val nome = varchar("nome", 100)
+fun whereNomesLike(palavras: List<String>): Op<Boolean>{
+    if(palavras.isNotEmpty()){
+        val nome = palavras[0]
+        val sobrenomes = palavras - nome
 
+        val opNome = Convidado.nome like "%${palavras[0]}%"
+        var opSobrenomes = Convidado.nome.like("%${sobrenomes[0]}%")
+
+        for((index, palavra) in sobrenomes.withIndex()){
+            if(palavra.length <= 2 || index == 0)
+                continue
+
+            opSobrenomes = opSobrenomes.or(Convidado.nome.like("%$palavra%"))
+        }
+        return opNome and opSobrenomes
+    }
+    throw ClassNotFoundException()
 }
 
-class EmpresaObj(id: EntityID<Int>): IntEntity(id){
-    companion object : IntEntityClass<EmpresaObj>(Empresa)
+object Convidado: Table(){
+    val id = uuid("id").primaryKey()
+    val nome = varchar("nome", 150)
+    val telefone = varchar("telefone", 14)
+    val confirmou = bool("confirmou")
+}
 
-    var nome by Empresa.nome
+object Acompanhante: UUIDTable("acompanhante"){
+    val nome = varchar("nome", 150)
+    val confirmou = bool("confirmou")
+    val idConvidado = (uuid("id_convidado").references(Convidado.id, ReferenceOption.CASCADE))
 }
 
 fun main(args: Array<String>) {
-    testaBanco()
+//    buscaConvidado("Vinicius")
+
+
+    buscaConvidado("Vinicius de Souza Araujo".trim().replace("\\s+".toRegex(), " ").split(" "))
+
 }
