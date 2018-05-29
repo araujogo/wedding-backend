@@ -6,17 +6,25 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
-fun buscaConvidado(nomeSobrenome: String): Map<UUID, String>{
+fun buscaConvidado(nomeSobrenome: String): List<ConvidadoGenerico>{
     Database.connect(HikariConfig().ds())
-    val acompanhantes = mutableMapOf<UUID, String>()
+    val acompanhantes = mutableListOf<ConvidadoGenerico>()
+    var convidado : ConvidadoGenerico? = null
 
     transaction {
-        (Acompanhante innerJoin Convidado).slice(Acompanhante.id, Acompanhante.nome).
+        Convidado.select {
+            whereNomesLike(nomeSobrenome.separa())
+        }.limit(1).forEach{
+            convidado = ConvidadoGenerico(it[Convidado.id].value, it[Convidado.nome], true)
+        }
+
+        acompanhantes += convidado?: throw PessoaNaoEncontradaException()
+
+        Acompanhante.slice(Acompanhante.id, Acompanhante.nome).
                 select{
-                    whereNomesLike(nomeSobrenome.separa())
+                    Acompanhante.idConvidado eq convidado!!.id
                 }.forEach{
-            acompanhantes[it[Acompanhante.id].value] = it[Acompanhante.nome]
-            //TODO colocar informacoes do convidado principal e retornar para também ser confirmado na tela de cinfirmacao
+            acompanhantes += ConvidadoGenerico(it[Acompanhante.id].value, it[Acompanhante.nome], false)
         }
 
     }
@@ -40,6 +48,21 @@ fun whereNomesLike(palavras: List<String>): Op<Boolean>{
         return opNome and opSobrenomes
     }
     throw RuntimeException("Nao eh possivel fazer busca sem palavras")
+}
+
+fun alteraStatusConvidados(convidado: String?, acompanhantes: List<String>){
+    transaction(Database.connect(HikariConfig().ds())) {
+        if (convidado != null){
+            Convidado.update({Convidado.id eq UUID.fromString(convidado)}){
+                it[confirmou] = true
+            }
+        }
+        if(acompanhantes.isNotEmpty()){
+            Acompanhante.update({Acompanhante.id inList acompanhantes.map { UUID.fromString(it) } }){
+                it[confirmou] = true
+            }
+        }
+    }
 }
 
 

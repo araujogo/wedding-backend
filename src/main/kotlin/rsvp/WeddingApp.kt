@@ -10,7 +10,6 @@ import io.ktor.gson.gson
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
-import io.ktor.response.respondText
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.post
@@ -43,22 +42,22 @@ fun Routing.root(){
             throw RuntimeException()
         }
         try {
-            val resultado = buscaConvidado(nomeSobrenome = nome)
-            if (resultado.isEmpty())
-                call.respond(HttpStatusCode.NotFound)
+            val convidados = buscaConvidado(nomeSobrenome = nome)
+            if(convidados.size == 1)
+                call.respond(HttpStatusCode.PermanentRedirect, convidados)
             else
-                call.respond(HttpStatusCode.OK, resultado)
-
+                call.respond(HttpStatusCode.OK, convidados)
+        }catch (e: PessoaNaoEncontradaException){
+            call.respond(HttpStatusCode.NotFound)
         }catch (e: RuntimeException){
             call.respond(HttpStatusCode.InternalServerError)
             e.printStackTrace()
         }
     }
     post("/"){
-        val params = call.receiveParameters().getAll("acp")
+        val acompanahntes = call.receiveParameters().getAll("acp")
+        alteraStatusConvidados(call.receiveParameters()["cnv"], acompanahntes?: emptyList())
 
-
-        call.respondText { "OK" }
-
+        call.respond(HttpStatusCode.OK)
     }
 }
